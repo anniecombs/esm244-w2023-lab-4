@@ -1,0 +1,98 @@
+---
+title: "ESM244_lab_4"
+author: "Annie Combs"
+date: "2023-02-02"
+output: html_document
+---
+
+```{r setup, echo = TRUE, message = FALSE, warning = FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+library(tictoc)
+library(furrr)
+```
+
+
+```{r}
+mtcars %>% 
+  map(mean)%>% #FYI returns a list as default; gets all those means at once instead of doing a super long for loop
+  kable() %>% 
+  kable_classic()
+```
+```{r}
+mtcars %>% 
+  map_dbl(mean) %>%  # dbl is short for double e.g numbers
+  head() %>% kable() %>% #head takes just the first 6
+  kable_classic()
+```
+
+```{r}
+mod1=lm(y~x,data=filter(thing1,df))
+mod2=lm(y~x,data=filter(thing2,df))
+... #or we can just do map
+
+mtcars %>% 
+  split(mtcars$cyl) %>%   #split is a base R so not part of the tidyverse
+  map(~lm(mpg~wt,data = .)) # the . is passed from the pipe with .x of map
+```
+
+
+map2(.x,  # dataset 1
+     .y,  # dataset 2
+     .f(x,y,...),  # the function the accepts dataset1 and dataset2 
+     ...
+     ) # this is just format for later
+
+
+```{r}
+by_cyl <- mtcars %>%  split(mtcars$cyl)  # Store the dataset for predictions
+mods <- by_cyl %>%  map(~lm(mpg ~ wt, data = .))
+predictions <- map2(mods, by_cyl, predict) # Take my linear mods and use the data to predict mpg
+
+by_cyl
+```
+```{r}
+#shows how map can catch erroes
+# Make up some data
+dat = structure(list(group = c("a", "a", "a", "a", "a", "a", "b", "b", "b"), 
+                     x = c("A", "A", "A", "B", "B", "B", "A", "A", "A"), 
+                     y = c(10.9, 11.1, 10.5, 9.7, 10.5, 10.9, 13, 9.9, 10.3)), 
+                class = "data.frame", row.names = c(NA, -9L))
+#Define safe lm function
+safelm=safely(.f=lm)
+dat %>% 
+  split(dat$group) %>%
+  map(~safelm(y~x,data=.x)) %>% 
+  map("error") # Pull out errors
+```
+#Parallel Processing
+
+```{r}
+library(tictoc)
+library(furrr)
+plan(sequential)
+#Run code to pause the computer for two seconds
+tic()
+test_slow<-future_map(c(2,2,2),~Sys.sleep(.x))
+toc()
+```
+
+```{r}
+#tell the computer we want to use three of our cores
+plan(multisession,workers=3)
+#Start a timer then run code to pause the computer for 2 seconds
+tic()
+test_fast<-future_map(c(2,2,2),~Sys.sleep(.x))
+toc()
+```
+#update on things completed
+
+```{r}
+library(purrr)
+x<-map(1:50,\(x) Sys.sleep(0.1),
+       .progress=TRUE)
+# Notice I used an anonymous function
+```
+
